@@ -121,10 +121,19 @@ main = do
         t <- T.getLine
         unless (T.null t) $ do
           let lineWords = T.words t
-          putStrLn $ case (head lineWords) of
-            "index" -> "You typed index."
-            "query" -> "You typed query."
-            _       -> "You did something weird!"
+          case (head lineWords) of
+            "index" -> do
+              let docIndex =  ((read $ T.unpack (head $ drop 1 lineWords)) :: Int)
+                  docWords = drop 2 lineWords
+              -- insertDoc (RecipeDescription docIndex docWords) searchEngine
+              putStrLn "You typed index."
+            "query" -> do
+              let queryWords = drop 1 lineWords
+              -- result <- query searchEngine queryWords
+              -- putStrLn "Result: " ++ (show result)
+              putStrLn "You typed query."
+            _       -> do
+              putStrLn "You did something weird!"
           loop
   return ()
   loop
