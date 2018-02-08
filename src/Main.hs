@@ -1,8 +1,11 @@
 {-# LANGUAGE OverloadedStrings, NamedFieldPuns #-}
 module Main where
 
+import Control.Exception
+
 import Data.Ix
 import Data.SearchEngine -- from full-text-search package
+import Data.Time
 
 import qualified Data.Text as T
 
@@ -77,5 +80,31 @@ defaultSearchRankParameters =
 
 main :: IO ()
 main = do
---  initSearchEngine -- needs args
-  putStrLn "hello world"
+  putStrLn "Spinning up."
+  let demoRecords = [ (RecipeDescription 1 ["See"])
+                    , (RecipeDescription 2 ["See", "Jane"])
+                    , (RecipeDescription 3 ["See", "Jane", "Run"])
+                    ]
+  let searchEngine = insertDocs demoRecords initialRecipeSearchEngine
+
+  putStrLn "Constructing demo index..."
+  printTiming "Done!" $
+    evaluate searchEngine >> return ()
+  putStrLn $ "search engine invariant: " ++ show (invariant searchEngine)
+  let rankedResultsSee  = query searchEngine $ [T.pack "See"]
+      rankedResultsJane = query searchEngine $ [T.pack "Jane"]
+      rankedResultsRun  = query searchEngine $ [T.pack "Run"]
+
+  putStrLn "Results:"
+  putStrLn (show rankedResultsSee)
+  putStrLn (show rankedResultsJane)
+  putStrLn (show rankedResultsRun)
+  putStrLn "fin!"
+
+printTiming :: String -> IO () -> IO ()
+printTiming msg action = do
+  t <- getCurrentTime
+  action
+  t' <- getCurrentTime
+  putStrLn (msg ++ ". time: " ++ show (diffUTCTime t' t))
+
