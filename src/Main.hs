@@ -1,13 +1,19 @@
 {-# LANGUAGE OverloadedStrings, NamedFieldPuns #-}
 module Main where
 
+import Data.SearchEngine -- from full-text-search package
+
 import Control.Exception
+import Control.Monad (unless)
 
 import Data.Ix
-import Data.SearchEngine -- from full-text-search package
 import Data.Time
 
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
+
+import System.IO (hFlush, stdout)
+
 
 -- SearchConfig
 --    documentKey :: doc -> key
@@ -78,8 +84,8 @@ defaultSearchRankParameters =
     paramFieldWeights RecipeIndex    = 20
     paramFieldWeights RecipeDocument = 5
 
-main :: IO ()
-main = do
+testMain :: IO ()
+testMain = do
   putStrLn "Spinning up."
   let demoRecords = [ (RecipeDescription 1 ["See"])
                     , (RecipeDescription 2 ["See", "Jane"])
@@ -102,6 +108,26 @@ main = do
   putStrLn (show rankedResultsRun)
   putStrLn (show rankedResultsCase)
   putStrLn "fin!"
+
+
+main :: IO ()
+main = do
+  let searchEngine = initialRecipeSearchEngine
+  let loop = do
+        putStr ">"
+        hFlush stdout
+        t <- T.getLine
+        unless (T.null t) $ do
+          let lineWords = T.words t
+          putStrLn $ case (head lineWords) of
+            "index" -> "You typed index."
+            "query" -> "You typed query."
+            "exit"  -> "You typed exit."
+          loop
+  return ()
+  loop
+
+
 
 printTiming :: String -> IO () -> IO ()
 printTiming msg action = do
