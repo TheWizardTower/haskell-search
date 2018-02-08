@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings, NamedFieldPuns #-}
 module Main where
 
 import Data.Ix
@@ -27,12 +28,11 @@ type Document = [T.Text]
 data RecipeDescription =
   RecipeDescription Index Document
 
-
 recipeSearchConfig :: SearchConfig RecipeDescription Index RecipeDocField NoFeatures
 recipeSearchConfig = SearchConfig
   { documentKey          = documentIndex
   , extractDocumentTerms = extractRecipeTokens
-  , transformQueryTerm   = normaliseQueryToken
+  , transformQueryTerm   = normalizeQueryToken
   , documentFeatureValue = const noFeatures
   }
 
@@ -43,9 +43,37 @@ extractRecipeTokens :: RecipeDescription -> RecipeDocField -> Document
 extractRecipeTokens (RecipeDescription index _) RecipeIndex = [(T.pack $ show index)]
 extractRecipeTokens (RecipeDescription _ doc) RecipeDocument = doc
 
-normaliseQueryToken :: Term -> RecipeDocField -> Term
-normaliseQueryToken term RecipeIndex = term
-normaliseQueryToken term RecipeDocument = T.toLower term
+normalizeQueryToken :: Term -> RecipeDocField -> Term
+normalizeQueryToken term RecipeIndex = term
+normalizeQueryToken term RecipeDocument = T.toLower term
+
+initialRecipeSearchEngine :: RecipeSearchEngine
+initialRecipeSearchEngine = initSearchEngine recipeSearchConfig defaultSearchRankParameters
+
+
+defaultSearchRankParameters :: SearchRankParameters RecipeDocField NoFeatures
+defaultSearchRankParameters =
+  SearchRankParameters { paramK1
+                       , paramB
+                       , paramFieldWeights
+                       , paramFeatureWeights = noFeatures
+                       , paramFeatureFunctions = noFeatures
+                       , paramResultsetSoftLimit = 200
+                       , paramResultsetHardLimit = 400
+                       , paramAutosuggestPrefilterLimit = 500
+                       , paramAutosuggestPostfilterLimit = 500
+                       }
+  where
+    paramK1 :: Float
+    paramK1 = 1.5
+
+    paramB :: RecipeDocField -> Float
+    paramB RecipeIndex    = 1.0
+    paramB RecipeDocument = 0.5
+
+    paramFieldWeights :: RecipeDocField -> Float
+    paramFieldWeights RecipeIndex    = 20
+    paramFieldWeights RecipeDocument = 5
 
 main :: IO ()
 main = do
