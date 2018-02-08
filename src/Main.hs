@@ -113,6 +113,8 @@ testMain = do
 main :: IO ()
 main = do
   let searchEngine = initialRecipeSearchEngine
+  printTiming "Done!" $
+    evaluate searchEngine >> return ()
   let loop = do
         putStr ">"
         hFlush stdout
@@ -122,7 +124,7 @@ main = do
           putStrLn $ case (head lineWords) of
             "index" -> "You typed index."
             "query" -> "You typed query."
-            "exit"  -> "You typed exit."
+            _       -> "You did something weird!"
           loop
   return ()
   loop
@@ -135,4 +137,3 @@ printTiming msg action = do
   action
   t' <- getCurrentTime
   putStrLn (msg ++ ". time: " ++ show (diffUTCTime t' t))
-
