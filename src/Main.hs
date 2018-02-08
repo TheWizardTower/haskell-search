@@ -94,11 +94,13 @@ main = do
   let rankedResultsSee  = query searchEngine $ [T.pack "See"]
       rankedResultsJane = query searchEngine $ [T.pack "Jane"]
       rankedResultsRun  = query searchEngine $ [T.pack "Run"]
+      rankedResultsCase = query searchEngine $ [T.pack "SEE"]
 
   putStrLn "Results:"
   putStrLn (show rankedResultsSee)
   putStrLn (show rankedResultsJane)
   putStrLn (show rankedResultsRun)
+  putStrLn (show rankedResultsCase)
   putStrLn "fin!"
 
 printTiming :: String -> IO () -> IO ()
