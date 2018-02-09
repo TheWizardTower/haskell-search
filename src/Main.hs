@@ -16,13 +16,6 @@ import qualified Data.Text.IO as T
 
 import System.IO (hFlush, stdout)
 
-
--- SearchConfig
---    documentKey :: doc -> key
---    extractDocumentTerms :: doc -> field -> [Term]
---    transformQueryTerm   :: Term -> field -> Term
---    documentFeatureValue :: doc -> feature -> Float
-
 type RecipeSearchEngine = SearchEngine
       RecipeDescription
       Index
