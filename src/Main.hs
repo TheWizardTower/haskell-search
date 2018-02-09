@@ -168,35 +168,17 @@ addDoc tvarDB recipe = do
 
 main :: IO ()
 main = do
-  putStrLn "Stand-in to make the compiler happy.."
-
--- main :: IO ()
--- main = do
---   tVarSearchEngine <- newTVarIO $ evaluate initialRecipeSearchEngine
---   let loop = do
---         putStr ">"
---         hFlush stdout
---         t <- T.getLine
---         unless (T.null t) $ do
---           let lineWords = T.words t
---           case (head lineWords) of
---             "index" -> do
---               let docIndex =  ((read $ T.unpack (head $ drop 1 lineWords)) :: Int)
---                   docWords = drop 2 lineWords
---               swapTVar tVarSearchEngine $ insertDoc (RecipeDescription docIndex docWords) (readTVar tVarSearchEngine)
---               putStrLn "You typed index."
---             "query" -> do
---               let queryWords = drop 1 lineWords
---               result <- query (readTVarIO tVarSearchEngine) queryWords
---               putStrLn "Result: " ++ (show result)
---               putStrLn "You typed query."
---             _       -> do
---               putStrLn "You did something weird!"
---           loop
---   return ()
---   loop
-
-
+  tVarSearchEngine <- newTVarIO $ evaluate initialRecipeSearchEngine
+  let loop = do
+        putStr ">"
+        hFlush stdout
+        t <- T.getLine
+        unless (T.null t) $ do
+          let lineWords = T.words t
+          dbRepl tVarSearchEngine lineWords
+          loop
+  return ()
+  loop
 
 printTiming :: String -> IO () -> IO ()
 printTiming msg action = do
