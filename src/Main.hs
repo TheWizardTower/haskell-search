@@ -6,7 +6,7 @@ import Data.SearchEngine -- from full-text-search package
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
 import Control.Exception
-import Control.Monad (unless, void)
+import Control.Monad (unless)
 
 import Data.Ix
 import Data.Time
