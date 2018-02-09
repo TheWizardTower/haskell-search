@@ -3,8 +3,10 @@ module Main where
 
 import Data.SearchEngine -- from full-text-search package
 
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
 import Control.Exception
-import Control.Monad (unless)
+import Control.Monad (unless, void)
 
 import Data.Ix
 import Data.Time
@@ -110,33 +112,89 @@ testMain = do
   putStrLn "fin!"
 
 
+readDocID :: [T.Text] -> Int
+readDocID line = read $ T.unpack $ head $ drop 1 line
+
+
+dbRepl :: TVar (IO RecipeSearchEngine) -> [T.Text] -> IO ()
+dbRepl tvarDB line = case (head line) of
+  "index" -> do
+    let docIndex = readDocID line
+        docWords = drop 2 line
+        doc      = RecipeDescription docIndex docWords
+    removeDoc tvarDB docIndex
+    addDoc tvarDB doc
+    putStrLn "Added a doc."
+  "query" -> do
+    let queryWords = drop 1 line
+    keyList <- queryDB tvarDB queryWords
+    putStrLn "Results:"
+    putStrLn (show keyList)
+    return ()
+  _ -> do
+    -- Put an error message here, and print the help page.
+    putStrLn "You did a weird thing."
+    return ()
+
+insertDocIO :: RecipeDescription -> IO RecipeSearchEngine -> IO RecipeSearchEngine
+insertDocIO recipe rseIO = do
+  rse <- rseIO
+  let rse' = insertDoc recipe rse
+  return rse'
+
+deleteDocIO docIndex rseIO = do
+  rse <- rseIO
+  let rse' = deleteDoc docIndex rse
+  return rse'
+
+removeDoc :: TVar (IO RecipeSearchEngine) -> Index -> IO ()
+removeDoc tvarDB docIndex = do
+  atomically $ modifyTVar' tvarDB $ deleteDocIO docIndex
+
+queryIO :: [Term] -> IO RecipeSearchEngine -> IO [Index]
+queryIO queryTerm rseIO = do
+  rse <- rseIO
+  let result = query rse queryTerm
+  return result
+
+queryDB :: TVar (IO RecipeSearchEngine) -> [Term] -> IO [Index]
+queryDB tvarDB termList = do
+  rseIO <- readTVarIO tvarDB
+  queryIO termList rseIO
+
+addDoc :: TVar (IO RecipeSearchEngine) -> RecipeDescription -> IO ()
+addDoc tvarDB recipe = do
+  atomically $ modifyTVar' tvarDB $ insertDocIO recipe
+
 main :: IO ()
 main = do
-  let searchEngine = initialRecipeSearchEngine
-  printTiming "Done!" $
-    evaluate searchEngine >> return ()
-  let loop = do
-        putStr ">"
-        hFlush stdout
-        t <- T.getLine
-        unless (T.null t) $ do
-          let lineWords = T.words t
-          case (head lineWords) of
-            "index" -> do
-              let docIndex =  ((read $ T.unpack (head $ drop 1 lineWords)) :: Int)
-                  docWords = drop 2 lineWords
-              -- insertDoc (RecipeDescription docIndex docWords) searchEngine
-              putStrLn "You typed index."
-            "query" -> do
-              let queryWords = drop 1 lineWords
-              -- result <- query searchEngine queryWords
-              -- putStrLn "Result: " ++ (show result)
-              putStrLn "You typed query."
-            _       -> do
-              putStrLn "You did something weird!"
-          loop
-  return ()
-  loop
+  putStrLn "Stand-in to make the compiler happy.."
+
+-- main :: IO ()
+-- main = do
+--   tVarSearchEngine <- newTVarIO $ evaluate initialRecipeSearchEngine
+--   let loop = do
+--         putStr ">"
+--         hFlush stdout
+--         t <- T.getLine
+--         unless (T.null t) $ do
+--           let lineWords = T.words t
+--           case (head lineWords) of
+--             "index" -> do
+--               let docIndex =  ((read $ T.unpack (head $ drop 1 lineWords)) :: Int)
+--                   docWords = drop 2 lineWords
+--               swapTVar tVarSearchEngine $ insertDoc (RecipeDescription docIndex docWords) (readTVar tVarSearchEngine)
+--               putStrLn "You typed index."
+--             "query" -> do
+--               let queryWords = drop 1 lineWords
+--               result <- query (readTVarIO tVarSearchEngine) queryWords
+--               putStrLn "Result: " ++ (show result)
+--               putStrLn "You typed query."
+--             _       -> do
+--               putStrLn "You did something weird!"
+--           loop
+--   return ()
+--   loop
 
 
 

@@ -21,3 +21,4 @@ executable haskell-search
                      , full-text-search
                      , text
                      , time
+                     , stm

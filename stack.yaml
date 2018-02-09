@@ -43,6 +43,7 @@ extra-deps:
   - full-text-search-0.2.1.4
   - text-1.2.2.2
   - time-1.8.0.2
+  - stm-2.4.5.0
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
