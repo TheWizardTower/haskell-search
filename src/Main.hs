@@ -5,8 +5,14 @@ import Data.SearchEngine -- from full-text-search package
 
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
-import Control.Exception
+import Control.Exception (evaluate)
 import Control.Monad (unless)
+
+import Data.Void
+
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
 import Data.Ix
 import Data.Time
@@ -104,10 +110,8 @@ testMain = do
   putStrLn (show rankedResultsCase)
   putStrLn "fin!"
 
-
 readDocID :: [T.Text] -> Int
 readDocID line = read $ T.unpack $ head $ drop 1 line
-
 
 dbRepl :: TVar (IO RecipeSearchEngine) -> [T.Text] -> IO ()
 dbRepl tvarDB line = case (head line) of
@@ -158,6 +162,101 @@ queryDB tvarDB termList = do
 addDoc :: TVar (IO RecipeSearchEngine) -> RecipeDescription -> IO ()
 addDoc tvarDB recipe = do
   atomically $ modifyTVar' tvarDB $ insertDocIO recipe
+
+type Parser = Parsec Void T.Text
+type Index = Integer
+type Term = T.Text
+type WordList = [Term]
+type QueryExpr = [Term]
+
+data SearchReplCommand = IndexCmd Index WordList
+                       | QueryCmd QExp
+                       deriving (Eq, Show)
+
+data SearchCommands = SIndex
+                    | SQuery
+                    deriving (Eq, Show)
+
+whileParser :: Parser SearchReplCommand
+whileParser = between sc eof replCmdP
+
+replCmdP :: Parser SearchReplCommand
+replCmdP = do
+  cmd <- commandP
+  case cmd of
+    Index -> do
+      index <- singleNumberP
+      wordList <- wordListP
+      return $ IndexCmd index wordList
+    Query -> do
+      queryList <- whileQueryP
+      return $ QueryCmd queryList
+
+rword :: T.Text -> Parser ()
+rword w = lexeme (string w *> notFollowedBy alphaNumChar)
+
+commandP :: Parser SearchCommands
+commandP =   Index <$ rword "index"
+         <|> Query <$ rword "query"
+
+wordListP :: Parser WordList
+wordListP = (fmap . fmap) T.pack $ some $ lexeme (try $ some letterChar)
+
+data Op = Or
+        | And
+        deriving (Eq, Show)
+
+data QExp = SingleTerm T.Text
+          | BinExp Op T.Text T.Text
+          | NestedExp Op QExp QExp
+          deriving (Eq, Show)
+
+sc :: Parser ()
+sc = L.space space1 empty empty
+
+symbol :: T.Text -> Parser T.Text
+symbol = L.symbol sc
+
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
+
+parens :: Parser a -> Parser a
+parens = between (symbol "(" ) (symbol ")")
+
+opP :: Parser Op
+opP = And <$ symbol "&"
+  <|> Or  <$ symbol "|"
+
+singleTermP :: Parser QExp
+singleTermP = do
+  notFollowedBy eof
+  term <- termP
+  return $ SingleTerm term
+
+binExpP :: Parser QExp
+binExpP = do
+  notFollowedBy eof
+  term1 <- termP
+  op <- opP
+  term2 <- termP
+  return $ BinExp op term1 term2
+
+nestedExpP :: Parser QExp
+nestedExpP = do
+  notFollowedBy eof
+  field1 <- queryP
+  op <- opP
+  field2 <- queryP
+  return $ NestedExp op field1 field2
+
+whileQueryP :: Parser QExp
+whileQueryP = between sc eof queryP
+
+queryP :: Parser QExp
+queryP =  try    singleTermP
+      <|> parens nestedExpP
+      <|>        nestedExpP
+
 
 main :: IO ()
 main = do
