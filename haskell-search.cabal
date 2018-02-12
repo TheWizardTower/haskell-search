@@ -21,6 +21,6 @@ executable haskell-search
   build-depends:       base >= 4.7 && < 5
                      , full-text-search
                      , megaparsec
+                     , stm
                      , text
                      , time
-                     , stm
