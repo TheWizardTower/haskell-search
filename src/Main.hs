@@ -4,7 +4,6 @@ module Main where
 import Data.SearchEngine -- from full-text-search package
 
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
 import Control.Exception (evaluate)
 import Control.Monad (unless)
 
@@ -49,10 +48,10 @@ recipeSearchConfig = SearchConfig
   }
 
 documentIndex :: RecipeDescription -> Index
-documentIndex (RecipeDescription index _ ) = index
+documentIndex (RecipeDescription docIndex _ ) = docIndex
 
 extractRecipeTokens :: RecipeDescription -> RecipeDocField -> Document
-extractRecipeTokens (RecipeDescription index _) RecipeIndex = [(T.pack $ show index)]
+extractRecipeTokens (RecipeDescription docIndex _) RecipeIndex = [(T.pack $ show docIndex)]
 extractRecipeTokens (RecipeDescription _ doc) RecipeDocument = doc
 
 normalizeQueryToken :: Term -> RecipeDocField -> Term
@@ -148,6 +147,7 @@ insertDocIO recipe rseIO = do
   let rse' = insertDoc recipe rse
   return rse'
 
+deleteDocIO :: Index -> IO RecipeSearchEngine -> IO RecipeSearchEngine
 deleteDocIO docIndex rseIO = do
   rse <- rseIO
   let rse' = deleteDoc docIndex rse
@@ -208,9 +208,9 @@ replCmdP = do
   cmd <- commandP
   case cmd of
     SIndex -> do
-      index <- singleNumberP
+      docIndex <- singleNumberP
       wordList <- wordListP
-      return $ IndexCmd (RecipeDescription index wordList)
+      return $ IndexCmd (RecipeDescription docIndex wordList)
     SQuery -> do
       queryList <- whileQueryP
       return $ QueryCmd queryList
@@ -230,7 +230,6 @@ data Op = Or
         deriving (Eq, Show)
 
 data QExp = SingleTerm T.Text
-          | BinExp Op T.Text T.Text
           | NestedExp Op QExp QExp
           deriving (Eq, Show)
 
@@ -255,14 +254,6 @@ singleTermP = do
   notFollowedBy eof
   term <- termP
   return $ SingleTerm term
-
-binExpP :: Parser QExp
-binExpP = do
-  notFollowedBy eof
-  term1 <- termP
-  op <- opP
-  term2 <- termP
-  return $ BinExp op term1 term2
 
 nestedExpP :: Parser QExp
 nestedExpP = do
