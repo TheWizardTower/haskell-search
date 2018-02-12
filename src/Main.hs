@@ -15,6 +15,7 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Data.Ix
+import Data.List (intersect, union)
 import Data.Time
 
 import qualified Data.Text as T
@@ -37,6 +38,7 @@ type Document = [T.Text]
 
 data RecipeDescription =
   RecipeDescription Index Document
+  deriving (Eq, Show)
 
 recipeSearchConfig :: SearchConfig RecipeDescription Index RecipeDocField NoFeatures
 recipeSearchConfig = SearchConfig
@@ -121,13 +123,20 @@ dbRepl tvarDB line = case (head line) of
         doc      = RecipeDescription docIndex docWords
     removeDoc tvarDB docIndex
     addDoc tvarDB doc
+    -- TODO: Reformat this to meet requirements.
     putStrLn "Added a doc."
   "query" -> do
-    let queryWords = drop 1 line
-    keyList <- queryDB tvarDB queryWords
-    putStrLn "Results:"
-    putStrLn (show keyList)
-    return ()
+    -- TODO: Parse this correctly, as it is an expression.
+    let queryWords = T.intercalate " " $  drop 1 line
+        parsedQWords = parseMaybe whileQueryP queryWords
+    case parsedQWords of
+      Nothing     -> putStrLn "query error."
+      Just parsed -> do
+        keyList <- queryDB tvarDB parsed
+        -- TODO: Reformat this to meet requirements.
+        putStrLn "Results:"
+        putStrLn (show keyList)
+        return ()
   _ -> do
     -- Put an error message here, and print the help page.
     putStrLn "You did a weird thing."
@@ -148,13 +157,29 @@ removeDoc :: TVar (IO RecipeSearchEngine) -> Index -> IO ()
 removeDoc tvarDB docIndex = do
   atomically $ modifyTVar' tvarDB $ deleteDocIO docIndex
 
-queryIO :: [Term] -> IO RecipeSearchEngine -> IO [Index]
-queryIO queryTerm rseIO = do
+queryIO :: QExp -> IO RecipeSearchEngine -> IO [Index]
+queryIO queryExp rseIO = do
   rse <- rseIO
-  let result = query rse queryTerm
-  return result
+  case queryExp of
+    SingleTerm term -> do
+      let result = query rse [term]
+      return result
+    NestedExp op nExp1 nExp2 -> do
+      index1 <- queryIO nExp1 rseIO
+      index2 <- queryIO nExp2 rseIO
+      case op of
+        And -> return $ intersect index1 index2
+        Or  -> return $ union index1 index2
 
-queryDB :: TVar (IO RecipeSearchEngine) -> [Term] -> IO [Index]
+dbCommand :: TVar (IO RecipeSearchEngine) -> SearchReplCommand -> IO [Index]
+dbCommand tvarDB command =
+  case command of
+    IndexCmd recipe -> do
+      addDoc tvarDB recipe
+      return ([] :: [Index])
+    QueryCmd qexp   -> queryDB tvarDB qexp
+
+queryDB :: TVar (IO RecipeSearchEngine) -> QExp -> IO [Index]
 queryDB tvarDB termList = do
   rseIO <- readTVarIO tvarDB
   queryIO termList rseIO
@@ -164,12 +189,10 @@ addDoc tvarDB recipe = do
   atomically $ modifyTVar' tvarDB $ insertDocIO recipe
 
 type Parser = Parsec Void T.Text
-type Index = Integer
-type Term = T.Text
 type WordList = [Term]
 type QueryExpr = [Term]
 
-data SearchReplCommand = IndexCmd Index WordList
+data SearchReplCommand = IndexCmd RecipeDescription
                        | QueryCmd QExp
                        deriving (Eq, Show)
 
@@ -184,11 +207,11 @@ replCmdP :: Parser SearchReplCommand
 replCmdP = do
   cmd <- commandP
   case cmd of
-    Index -> do
+    SIndex -> do
       index <- singleNumberP
       wordList <- wordListP
-      return $ IndexCmd index wordList
-    Query -> do
+      return $ IndexCmd (RecipeDescription index wordList)
+    SQuery -> do
       queryList <- whileQueryP
       return $ QueryCmd queryList
 
@@ -196,8 +219,8 @@ rword :: T.Text -> Parser ()
 rword w = lexeme (string w *> notFollowedBy alphaNumChar)
 
 commandP :: Parser SearchCommands
-commandP =   Index <$ rword "index"
-         <|> Query <$ rword "query"
+commandP =   SIndex <$ rword "index"
+         <|> SQuery <$ rword "query"
 
 wordListP :: Parser WordList
 wordListP = (fmap . fmap) T.pack $ some $ lexeme (try $ some letterChar)
@@ -257,6 +280,11 @@ queryP =  try    singleTermP
       <|> parens nestedExpP
       <|>        nestedExpP
 
+singleNumberP :: Parser Int
+singleNumberP = lexeme L.decimal
+
+termP :: Parser T.Text
+termP = fmap T.pack $ lexeme $ some letterChar
 
 main :: IO ()
 main = do
