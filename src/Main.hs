@@ -115,30 +115,21 @@ readDocID :: [T.Text] -> Int
 readDocID line = read $ T.unpack $ head $ drop 1 line
 
 dbRepl :: TVar (IO RecipeSearchEngine) -> [T.Text] -> IO ()
-dbRepl tvarDB line = case (head line) of
-  "index" -> do
-    let docIndex = readDocID line
-        docWords = drop 2 line
-        doc      = RecipeDescription docIndex docWords
+dbRepl tvarDB lineList =
+  let line = T.intercalate " " lineList in
+  case (parseMaybe whileParser line) of
+  Nothing -> putStrLn "Parse error, invalid command."
+  Just (IndexCmd (RecipeDescription docIndex docWords)) -> do
+    let doc = RecipeDescription docIndex docWords
     removeDoc tvarDB docIndex
     addDoc tvarDB doc
     -- TODO: Reformat this to meet requirements.
     putStrLn "Added a doc."
-  "query" -> do
-    -- TODO: Parse this correctly, as it is an expression.
-    let queryWords = T.intercalate " " $  drop 1 line
-        parsedQWords = parseMaybe whileQueryP queryWords
-    case parsedQWords of
-      Nothing     -> putStrLn "query error."
-      Just parsed -> do
-        keyList <- queryDB tvarDB parsed
-        -- TODO: Reformat this to meet requirements.
-        putStrLn "Results:"
-        putStrLn (show keyList)
-        return ()
-  _ -> do
-    -- Put an error message here, and print the help page.
-    putStrLn "You did a weird thing."
+  Just (QueryCmd qExp) -> do
+    keyList <- queryDB tvarDB qExp
+    -- TODO: Reformat this to meet requirements.
+    putStrLn "Results:"
+    putStrLn (show keyList)
     return ()
 
 insertDocIO :: RecipeDescription -> IO RecipeSearchEngine -> IO RecipeSearchEngine
