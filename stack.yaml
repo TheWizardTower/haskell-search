@@ -54,7 +54,7 @@ allow-newer: true
 # extra-package-dbs: []
 
 ghc-options:
-  "$locals": -Wall-Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
+  "$locals": -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
 apply-ghc-options: locals
 
 # Control whether we use the GHC we find on the path
