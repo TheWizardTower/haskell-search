@@ -16,8 +16,8 @@ Stack is awesome. Use stack.
 
 You have two options.
 
-1 - You can run 'stack install' above instead of 'stack build'. Stack will place the binary in ~/.local/bin
-2 - run 'find . -name haskell-search -type f -executable'. This will give you two path locations. Either works fine.
+1. You can run 'stack install' above instead of 'stack build'. Stack will place the binary in ~/.local/bin
+2. run 'find . -name haskell-search -type f -executable'. This will give you two path locations. Either works fine.
 
 ## Okay, I ran it, and all I see is a '>' prompt. Help?
 
