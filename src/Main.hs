@@ -144,12 +144,15 @@ dbRepl tvarDB lineList =
     removeDoc tvarDB docIndex
     addDoc tvarDB doc
     -- TODO: Reformat this to meet requirements.
-    putStrLn "Added a doc."
+    putStrLn $ "index: ok " ++ (show docIndex)
   Right (QueryCmd qExp) -> do
     keyList <- queryDB tvarDB qExp
     -- TODO: Reformat this to meet requirements.
-    putStrLn "Results:"
-    putStrLn (show keyList)
+    putStr "query: results "
+    mapM_ (\a -> do
+            putStr (show a)
+            putStr " ") keyList
+    putStrLn ""
     return ()
 
 insertDocIO :: RecipeDescription -> IO RecipeSearchEngine -> IO RecipeSearchEngine
