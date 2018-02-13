@@ -15,6 +15,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Data.Ix
 import Data.List (intersect, union)
+import qualified Data.List.NonEmpty as NE
 import Data.Time
 
 import qualified Data.Text as T
@@ -114,18 +115,37 @@ testMain = do
 readDocID :: [T.Text] -> Int
 readDocID line = read $ T.unpack $ head $ drop 1 line
 
+formatError :: ParseError t e -> T.Text -> T.Text
+formatError (TrivialError neList _ _) parseLine = do
+  let command = T.toLower $ head $ T.words parseLine
+  case (NE.head neList) of
+    SourcePos _ _ sourceColumn -> do
+      case command of
+        "index" -> "index err: column " `T.append` (T.pack $ show sourceColumn)
+        "query" -> "query err: column " `T.append` (T.pack $ show sourceColumn)
+        _       -> "invalid command."
+formatError (FancyError neSourcePos _) parseLine = do
+  let command = T.toLower $ head $ T.words parseLine
+  case (NE.head neSourcePos) of
+    SourcePos _ _ sourceColumn ->
+      case command of
+        "index" -> "index err: column " `T.append` (T.pack $ show sourceColumn)
+        "query" -> "query err: column " `T.append` (T.pack $ show sourceColumn)
+        _       -> "invalid command"
+
+
 dbRepl :: TVar (IO RecipeSearchEngine) -> [T.Text] -> IO ()
 dbRepl tvarDB lineList =
   let line = T.intercalate " " lineList in
-  case (parseMaybe whileParser line) of
-  Nothing -> putStrLn "Parse error, invalid command."
-  Just (IndexCmd (RecipeDescription docIndex docWords)) -> do
+  case (runParser whileParser "" line) of
+  Left parseError -> putStrLn $ T.unpack $ formatError parseError line
+  Right (IndexCmd (RecipeDescription docIndex docWords)) -> do
     let doc = RecipeDescription docIndex docWords
     removeDoc tvarDB docIndex
     addDoc tvarDB doc
     -- TODO: Reformat this to meet requirements.
     putStrLn "Added a doc."
-  Just (QueryCmd qExp) -> do
+  Right (QueryCmd qExp) -> do
     keyList <- queryDB tvarDB qExp
     -- TODO: Reformat this to meet requirements.
     putStrLn "Results:"
