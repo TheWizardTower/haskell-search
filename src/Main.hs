@@ -219,10 +219,13 @@ replCmdP = do
   cmd <- commandP
   case cmd of
     SIndex -> do
+      notFollowedBy eof
       docIndex <- singleNumberP
       wordList <- wordListP
       return $ IndexCmd (RecipeDescription docIndex wordList)
     SQuery -> do
+      notFollowedBy numberChar
+      notFollowedBy eof
       queryList <- whileQueryP
       return $ QueryCmd queryList
 
