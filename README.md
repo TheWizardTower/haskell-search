@@ -56,10 +56,6 @@ You can nest these queries to arbitrary length, but as you add operators, the qu
 
 Note also that each term has to be nested in parens. Pretend you're in a strange variant of lisp and you'll be fine.
 
-## Why don't my readline shortcuts (Ctrl-p, Ctrl-n, Ctrl-b, Ctrl-f, others) work?
-
-Because I haven't set up a readline library yet. My apologies I did say this was a toy project, right? Fear not, it's on the to-do list.
-
 ## Help, how I get out?
 
-Just enter an empty command. Ctrl-D will also work (eof), but it'll spit out an error.
+Just enter an empty command. Ctrl-D will also work (eof).
