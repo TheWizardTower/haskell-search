@@ -6,6 +6,7 @@ import Data.SearchEngine -- from full-text-search package
 import Control.Concurrent.STM
 import Control.Exception (evaluate)
 import Control.Monad (unless)
+import Control.Monad.Trans.Class (lift)
 
 import Data.Void
 
@@ -19,9 +20,8 @@ import qualified Data.List.NonEmpty as NE
 import Data.Time
 
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 
-import System.IO (hFlush, stdout)
+import System.Console.Haskeline
 
 type RecipeSearchEngine = SearchEngine
       RecipeDescription
@@ -297,16 +297,20 @@ termP = fmap T.pack $ lexeme $ some letterChar
 main :: IO ()
 main = do
   tVarSearchEngine <- newTVarIO $ evaluate initialRecipeSearchEngine
-  let loop = do
-        putStr ">"
-        hFlush stdout
-        t <- T.getLine
-        unless (T.null t) $ do
-          let lineWords = T.words t
-          dbRepl tVarSearchEngine lineWords
-          loop
-  return ()
-  loop
+  runInputT defaultSettings (loop tVarSearchEngine)
+  where
+    loop :: TVar (IO RecipeSearchEngine) -> InputT IO ()
+    loop tVarSearchEngine = do
+      minput <- getInputLine "> "
+      case minput of
+        Nothing -> return ()
+        Just "quit" -> return ()
+        Just str -> do
+          let t = T.pack str
+          unless (T.null t) $ do
+            let lineWords = T.words t
+            lift $ dbRepl tVarSearchEngine lineWords
+            loop tVarSearchEngine
 
 printTiming :: String -> IO () -> IO ()
 printTiming msg action = do
